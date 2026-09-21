@@ -154,7 +154,7 @@ export default function LiveLessonsHub({
       <div className="min-w-0 space-y-4">
         <section
           className="rounded-[28px] bg-[#EC4899] px-5 py-6 sm:px-7"
-          aria-label="Unlock Weekly Live Classes with Pro"
+          aria-label="Unlock Weekly Live Classes with Max"
         >
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
@@ -163,7 +163,7 @@ export default function LiveLessonsHub({
                   PRO
                 </span>
                 <h2 className="font-dm text-xl font-medium tracking-normal text-[#FDE7F4] sm:text-2xl">
-                  Unlock Weekly Live Classes with Pro
+                  Unlock Weekly Live Classes with Max
                 </h2>
               </div>
 
@@ -265,7 +265,7 @@ export default function LiveLessonsHub({
                               ) : (
                                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-arc-line px-2.5 py-1 font-sans text-[11px] font-medium text-arc-muted">
                                   <LockIcon />
-                                  Pro
+                                  Max
                                 </span>
                               )}
                             </div>

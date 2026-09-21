@@ -1,3 +1,4 @@
+import { formatAssignmentDueDate } from "@/lib/studentReview";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getDashboardShellStats } from "@/app/actions";
@@ -105,11 +106,12 @@ export default async function AssignmentsPage() {
               <div className="mb-3"><p className="arc-card-label">Bootcamp</p><h2 className="mt-1 font-sans text-xl font-semibold text-arc-ink">Assignments to finish</h2></div>
               <div className="space-y-3">
                 {bootcampAssignments.map((assignment) => {
+                  const dueLabel = formatAssignmentDueDate(assignment.due_date);
                   const total = assignment.question_count;
                   const completed = Math.min(assignment.completed_count, total);
                   const remaining = Math.max(total - completed, 0);
                   const pct = total ? Math.round((completed / total) * 100) : 0;
-                  return <article key={assignment.id} className="arc-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0 flex-1"><p className="font-sans text-base font-semibold text-arc-ink">{assignment.title}</p><p className="mt-1 text-sm text-arc-muted">{remaining} question{remaining === 1 ? "" : "s"} left{assignment.due_date ? ` · Due ${new Date(`${assignment.due_date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}</p><div className="mt-3 h-2 max-w-md overflow-hidden rounded-full bg-[#E5F7FF]"><div className="h-full rounded-full bg-[#1BB1F6]" style={{ width: `${pct}%` }} /></div><p className="mt-1 text-xs text-arc-muted">{completed} of {total} complete</p></div><Link href={`/assignments/${assignment.id}`} className="arc-btn-primary min-h-11 shrink-0 px-5 py-2.5">Continue assignment</Link></article>;
+                  return <article key={assignment.id} className="arc-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0 flex-1"><p className="font-sans text-base font-semibold text-arc-ink">{assignment.title}</p><p className="mt-1 text-sm text-arc-muted">{remaining} question{remaining === 1 ? "" : "s"} left{dueLabel ? ` · Due ${dueLabel}` : ""}</p><div className="mt-3 h-2 max-w-md overflow-hidden rounded-full bg-[#E5F7FF]"><div className="h-full rounded-full bg-[#1BB1F6]" style={{ width: `${pct}%` }} /></div><p className="mt-1 text-xs text-arc-muted">{completed} of {total} complete</p></div><Link href={`/assignments/${assignment.id}`} className="arc-btn-primary min-h-11 shrink-0 px-5 py-2.5">Continue assignment</Link></article>;
                 })}
               </div>
             </section>

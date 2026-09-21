@@ -1,11 +1,11 @@
 ---
 name: sat-question-writer
-description: Write entirely original SAT Reading & Writing or Math practice questions from scratch, in authentic College Board style, for ArcPrep. Use this skill whenever the user asks to generate SAT-style practice questions, create new questions for a specific domain/skill, extract a "blueprint" or "topic style" from source material, or build out ArcPrep's own original question bank. Triggers on requests like "write me 3 questions for X skill," "make original SAT questions," "extract the structural pattern from this," or any mention of generating practice content for a specific Digital SAT domain (Information and Ideas, Craft and Structure, Expression of Ideas, Standard English Conventions, Algebra, Advanced Math, Problem-Solving and Data Analysis, Geometry and Trigonometry). This skill NEVER reproduces or closely paraphrases real SAT passages/questions - it only extracts abstract patterns (topic style, sub-skill, distractor logic) and writes wholly new content from them.
+description: Write entirely original SAT Reading & Writing or Math practice questions from scratch, in authentic College Board style, for Tutormigo. Use this skill whenever the user asks to generate SAT-style practice questions, create new questions for a specific domain/skill, extract a "blueprint" or "topic style" from source material, or build out Tutormigo's own original question bank. Triggers on requests like "write me 3 questions for X skill," "make original SAT questions," "extract the structural pattern from this," or any mention of generating practice content for a specific Digital SAT domain (Information and Ideas, Craft and Structure, Expression of Ideas, Standard English Conventions, Algebra, Advanced Math, Problem-Solving and Data Analysis, Geometry and Trigonometry). This skill NEVER reproduces or closely paraphrases real SAT passages/questions - it only extracts abstract patterns (topic style, sub-skill, distractor logic) and writes wholly new content from them.
 ---
 
-# SAT Question Writer (ArcPrep)
+# SAT Question Writer (Tutormigo)
 
-Writes original, College-Board-style Digital SAT practice questions for ArcPrep's own question bank - never copies or closely paraphrases real exam content. Output is tagged `source: "ArcPrep"` and matches ArcPrep's Supabase `questions` schema, so it drops straight into the same pipeline as the College Board-sourced questions (kept separate via the `source` field - never mix AI-generated and CB-sourced content without that tag).
+Writes original, College-Board-style Digital SAT practice questions for Tutormigo's own question bank - never copies or closely paraphrases real exam content. Output is tagged `source: "Tutormigo"` and matches Tutormigo's Supabase `questions` schema, so it drops straight into the same pipeline as the College Board-sourced questions (kept separate via the `source` field - never mix AI-generated and CB-sourced content without that tag).
 
 ## Two-stage workflow
 
@@ -62,12 +62,12 @@ organizations, or news events as the basis for an original question.
 
 ## Output format
 
-Return each question as a JSON object matching this shape (ready for ArcPrep's pipeline):
+Return each question as a JSON object matching this shape (ready for Tutormigo's pipeline):
 
 ```json
 {
   "question_id": "<short random hex id, e.g. python secrets.token_hex(4)>",
-  "source": "ArcPrep",
+  "source": "Tutormigo",
   "domain": "<exact domain name from reference tables>",
   "skill": "<exact skill name from reference tables>",
   "tier": 1,
@@ -79,7 +79,7 @@ Return each question as a JSON object matching this shape (ready for ArcPrep's p
 }
 ```
 
-For Standard English Conventions / grammar-style questions with a fill-in-the-blank, set `blank_index` to the character offset of the `______` marker in `stem` (same convention as the rest of ArcPrep's pipeline) instead of `null`.
+For Standard English Conventions / grammar-style questions with a fill-in-the-blank, set `blank_index` to the character offset of the `______` marker in `stem` (same convention as the rest of Tutormigo's pipeline) instead of `null`.
 
 Present a batch as a JSON array, or as one object per question if the user wants to review them one at a time — ask which they'd prefer for a first batch, then keep the same format for the rest of the session.
 

@@ -35,7 +35,7 @@ const args = Object.fromEntries(
   })
 );
 
-const TEST_EMAIL = "test+calbooking@neoprep.com";
+const TEST_EMAIL = "test+calbooking@tutormigo.com";
 const TEST_NAME = "TEST Cal Booking (do not use)";
 
 if (!SUPABASE_URL || !SERVICE_KEY || !CAL_API_KEY) {
@@ -438,7 +438,7 @@ async function main() {
     // Cal v2 cancel: POST /v2/bookings/{uid}/cancel
     const cancel = await calFetch(`/bookings/${encodeURIComponent(uid)}/cancel`, {
       method: "POST",
-      body: JSON.stringify({ cancellationReason: "E2E test cleanup — test+calbooking@neoprep.com" }),
+      body: JSON.stringify({ cancellationReason: "E2E test cleanup — test+calbooking@tutormigo.com" }),
     });
     cancelResults.push({ uid, status: cancel.status, body: cancel.json });
     console.log("cancel", uid, "HTTP", cancel.status, JSON.stringify(cancel.json).slice(0, 200));

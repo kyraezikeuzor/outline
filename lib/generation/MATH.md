@@ -1,6 +1,6 @@
 # Math — Stems, Constraints, Distractor Patterns
 
-Domain/skill names below match ArcPrep's schema exactly. Every Math question needs
+Domain/skill names below match Tutormigo's schema exactly. Every Math question needs
 `question_type`: `"multiple_choice"` (4 choices) or `"grid_in"` (student-produced
 numeric response, no choices — set `"choices": null` and `correct_answer` to the
 numeric value as a string).

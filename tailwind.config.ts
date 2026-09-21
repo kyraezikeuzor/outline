@@ -32,11 +32,23 @@ const config: Config = {
           sidebarActiveText: "#FFFFFF",
           sidebarHover: "rgba(255,255,255,0.12)",
         },
+        // Public marketing pages only, like the `marketing*` typography styles.
+        // Deliberately outside `arc` so a public-site redesign cannot reach the
+        // student platform.
+        mkt: {
+          navy: "#03225A",
+          navyDeep: "#02163B",
+          surface: "#F7F7F7",
+          line: "#E8E8E8",
+        },
       },
       fontFamily: {
         display: ["'Noto Serif'", "Georgia", "serif"],
         sans: ["'Inter'", "system-ui", "sans-serif"],
         dm: ["'DM Sans'", "system-ui", "sans-serif"],
+        // Marketing hero serif. Not `display` — that one is load-bearing for
+        // charts and graphs.
+        garamond: ["'EB Garamond'", "Georgia", "serif"],
       },
       borderRadius: {
         arc: "10px",

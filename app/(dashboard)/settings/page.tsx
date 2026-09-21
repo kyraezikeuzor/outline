@@ -5,7 +5,7 @@ import GoalScoreForm from "@/components/GoalScoreForm";
 import PageHeader from "@/components/PageHeader";
 import SignOutButton from "@/components/SignOutButton";
 import BillingPortalButton from "@/components/billing/BillingPortalButton";
-import UpgradeToProCard from "@/components/billing/UpgradeToProCard";
+import UpgradePlanCard from "@/components/billing/UpgradePlanCard";
 import { getCurrentQuestionAccess } from "@/lib/question-access.server";
 
 export const metadata: Metadata = {
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         </div>
       </div>
       {!access.isPro ? (
-        <UpgradeToProCard
+        <UpgradePlanCard
           compact
           className="mt-4"
           usedQuestions={access.uniqueQuestionsUsed}

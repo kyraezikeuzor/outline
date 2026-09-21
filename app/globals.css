@@ -68,9 +68,15 @@ body {
   }
 }
 
-/* Landing page — DM Sans for chrome/headings; Inter for body + FAQs */
+/* Landing page — Inter throughout, with EB Garamond reserved for the hero.
+   These rules sit after @tailwind utilities, so they beat the font-* utility
+   classes; `.landing-display` is the escape hatch that re-asserts the serif. */
 .landing-page {
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.landing-page .landing-display {
+  font-family: "EB Garamond", Georgia, serif;
 }
 
 .landing-page .landing-body,
@@ -83,6 +89,19 @@ body {
 .landing-page .landing-faqs,
 .landing-page .landing-faqs * {
   font-family: "Inter", system-ui, sans-serif !important;
+}
+
+/* Smooth in-page jumps for the marketing navbar's anchor links. Scoped to the
+   scroll container of pages that actually render the landing page, so the
+   student platform keeps its instant jumps. */
+html:has(.landing-page) {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing-page) {
+    scroll-behavior: auto;
+  }
 }
 
 .font-display,

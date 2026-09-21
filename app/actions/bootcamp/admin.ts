@@ -1,7 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeChoices, normalizeQuestion, QUESTION_SELECT } from "@/lib/questions";
-import { getSatSectionScore } from "@/lib/satScore";
+import {
+  getDigitalSatScore,
+  type DigitalSatModuleCorrect,
+  type DigitalSatModuleKey,
+} from "@/lib/satScore";
 import {
   MATH_DOMAINS,
   READING_DOMAINS,
@@ -683,6 +687,16 @@ function testModuleOrder(module: string) {
   return ["reading_writing_1", "reading_writing_2", "math_1", "math_2"].indexOf(module);
 }
 
+function digitalSatModuleKey(module: string): DigitalSatModuleKey {
+  if (module === "reading_writing_2" || module === "math_1" || module === "math_2") return module;
+  if (module === "math") return "math_1";
+  return "reading_writing_1";
+}
+
+function emptyDigitalSatModuleCounts(): DigitalSatModuleCorrect {
+  return { reading_writing_1: 0, reading_writing_2: 0, math_1: 0, math_2: 0 };
+}
+
 function answersMatch(selected: string | null | undefined, correct: string) {
   if (!selected) return false;
   const a = selected.trim().toLowerCase();
@@ -789,6 +803,8 @@ export async function getAdminPracticeTestRunDetail(
     reports.set(id, entries);
   }
   let rawReading = 0, rawMath = 0, adjustedReading = 0, adjustedMath = 0;
+  const rawByModule = emptyDigitalSatModuleCounts();
+  const adjustedByModule = emptyDigitalSatModuleCounts();
   const questionDetails = orderedLinks.flatMap((link) => {
     const question = questions.get(String(link.question_id));
     if (!question) return [];
@@ -797,22 +813,27 @@ export async function getAdminPracticeTestRunDetail(
     const correct = answersMatch(selected, question.correct_answer);
     const questionReports = reports.get(question.question_id) ?? [];
     const credited = questionReports.length > 0;
-    if (correct) section === "math" ? rawMath++ : rawReading++;
-    if (correct || credited) section === "math" ? adjustedMath++ : adjustedReading++;
+    const module = digitalSatModuleKey(String(link.module));
+    if (correct) {
+      section === "math" ? rawMath++ : rawReading++;
+      rawByModule[module]++;
+    }
+    if (correct || credited) {
+      section === "math" ? adjustedMath++ : adjustedReading++;
+      adjustedByModule[module]++;
+    }
     return [{ question_id: question.question_id, module: String(link.module), position: Number(link.position), section, domain: question.domain, skill: question.skill, stem: question.stem, choices: question.choices, correct_answer: question.correct_answer, selected_answer: selected, answered_correctly: correct, credited_for_report: credited, reports: questionReports }];
   });
-  const rawReadingScore = getSatSectionScore("reading_writing", rawReading);
-  const rawMathScore = getSatSectionScore("math", rawMath);
-  const adjustedReadingScore = getSatSectionScore("reading_writing", adjustedReading);
-  const adjustedMathScore = getSatSectionScore("math", adjustedMath);
+  const rawScore = getDigitalSatScore(rawByModule);
+  const adjustedScore = getDigitalSatScore(adjustedByModule);
   const runSummary: AdminPracticeTestRunSummary = {
     run_id: String(run.id), test_id: String(test.id), title: String(test.title), status: run.status === "completed" ? "completed" : "in_progress", started_at: String(run.started_at), completed_at: run.completed_at ? String(run.completed_at) : null,
     answered: answers.size, total: questionIds.length, reported_questions: reports.size,
   };
   return {
     run: runSummary,
-    raw: { reading_writing: rawReading, math: rawMath, total: rawReadingScore.score + rawMathScore.score, total_lower: rawReadingScore.lower + rawMathScore.lower, total_upper: rawReadingScore.upper + rawMathScore.upper },
-    adjusted: { reading_writing: adjustedReading, math: adjustedMath, total: adjustedReadingScore.score + adjustedMathScore.score, total_lower: adjustedReadingScore.lower + adjustedMathScore.lower, total_upper: adjustedReadingScore.upper + adjustedMathScore.upper },
+    raw: { reading_writing: rawReading, math: rawMath, reading_writing_score: rawScore.reading_writing, math_score: rawScore.math, total: rawScore.total },
+    adjusted: { reading_writing: adjustedReading, math: adjustedMath, reading_writing_score: adjustedScore.reading_writing, math_score: adjustedScore.math, total: adjustedScore.total },
     questions: questionDetails,
   };
 }

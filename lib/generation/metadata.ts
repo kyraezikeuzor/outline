@@ -42,7 +42,7 @@ const SKILL_REFERENCE_NOTES = new Map<string, string>([
   [
     key("Information and Ideas", "Command of Evidence"),
     [
-      "This exact ArcPrep skill covers the two reference variants named",
+      "This exact Tutormigo skill covers the two reference variants named",
       "\"Command of Evidence (textual)\" and \"Command of Evidence (quantitative)\".",
       "Use one of those stem patterns, but set the persisted skill field to exactly",
       "\"Command of Evidence\".",

@@ -16,3 +16,6 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 scripts/.cal-test-output/
+
+# Generated student progress reports — contain student PII, keep local
+reports/

@@ -164,8 +164,8 @@ export type AdminPracticeTestQuestion = {
 
 export type AdminPracticeTestRunDetail = {
   run: AdminPracticeTestRunSummary;
-  raw: { reading_writing: number; math: number; total: number; total_lower: number; total_upper: number };
-  adjusted: { reading_writing: number; math: number; total: number; total_lower: number; total_upper: number };
+  raw: { reading_writing: number; math: number; reading_writing_score: number; math_score: number; total: number };
+  adjusted: { reading_writing: number; math: number; reading_writing_score: number; math_score: number; total: number };
   questions: AdminPracticeTestQuestion[];
 };
 

@@ -21,8 +21,8 @@ export default async function PracticeTestsPage() {
                 <div><p className="arc-card-label">Digital SAT</p><h2 className="mt-2 text-xl font-semibold text-arc-ink">{test.title}</h2></div>
                 {latestCompleted ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Completed</span> : null}
               </div>
-              <p className="mt-2 text-sm text-arc-muted">{test.description}</p>
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-arc-soft p-3"><b>{test.readingCount}</b> Reading & Writing<br/><span className="text-arc-muted">2 × {test.readingMinutes} minutes</span></div><div className="rounded-xl bg-arc-soft p-3"><b>{test.mathCount}</b> Math<br/><span className="text-arc-muted">2 × {test.mathMinutes} minutes</span></div></div>
+              <p className="mt-2 text-sm text-arc-muted">{test.description?.replace("27 Reading & Writing questions, then 22 Math questions.", "two Reading & Writing modules with 27 questions per module, then two Math modules with 22 questions per module.")}</p>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-arc-soft p-3"><b>{test.readingCount}</b> Reading & Writing questions total<br/><span className="text-arc-muted">2 × {test.readingMinutes} minutes</span></div><div className="rounded-xl bg-arc-soft p-3"><b>{test.mathCount}</b> Math questions total<br/><span className="text-arc-muted">2 × {test.mathMinutes} minutes</span></div></div>
               <div className="mt-6 flex flex-wrap gap-2">
                 {test.activeRunId ? <Link href={`/practice-tests/${test.id}`} className="arc-btn-primary inline-flex min-h-11 items-center px-5">Continue</Link> : null}
                 {latestCompleted ? <Link href={`/practice-tests/${test.id}?run=${latestCompleted.id}`} className="arc-btn-secondary inline-flex min-h-11 items-center px-5">View results</Link> : null}

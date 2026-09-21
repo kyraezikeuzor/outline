@@ -1,6 +1,6 @@
 # Reading & Writing — Stems, Constraints, Distractor Patterns
 
-Domain/skill names below match ArcPrep's schema exactly (validated against 605 real
+Domain/skill names below match Tutormigo's schema exactly (validated against 605 real
 College-Board questions during pipeline development) — use these exact strings for
 the `domain`/`skill` fields, don't invent variants.
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { PricingPlanId } from "@/lib/pricing";
+import { getPlanTier, type CheckoutPlanId } from "@/lib/pricing";
 
 function ArrowIcon() {
   return (
@@ -13,13 +13,15 @@ function ArrowIcon() {
 
 export default function CheckoutButton({
   planId,
-  testDate,
+  variant = "primary",
 }: {
-  planId: PricingPlanId;
-  testDate: string;
+  planId: CheckoutPlanId;
+  /** "primary" is the filled brand button; "dark" is Max's premium treatment. */
+  variant?: "primary" | "dark";
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const label = getPlanTier(planId).cta;
 
   async function beginCheckout() {
     setLoading(true);
@@ -29,7 +31,7 @@ export default function CheckoutButton({
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, testDate }),
+        body: JSON.stringify({ planId }),
       });
       const result = (await response.json()) as {
         url?: string;
@@ -58,9 +60,13 @@ export default function CheckoutButton({
         type="button"
         onClick={beginCheckout}
         disabled={loading}
-        className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1BB1F6] px-4 font-sans text-base font-semibold text-white transition hover:bg-[#079FDF] disabled:cursor-wait disabled:opacity-70"
+        className={`flex h-10 w-full items-center justify-center gap-2 rounded-xl px-4 font-sans text-base font-semibold text-white transition disabled:cursor-wait disabled:opacity-70 ${
+          variant === "dark"
+            ? "bg-[#0A0A0A] hover:bg-[#2D2D2D]"
+            : "bg-[#1BB1F6] hover:bg-[#079FDF]"
+        }`}
       >
-        {loading ? "Opening secure checkout…" : "Get Pro"}
+        {loading ? "Opening secure checkout…" : label}
         {!loading ? <ArrowIcon /> : null}
       </button>
       {error ? <p className="mt-2 font-sans text-xs text-red-600">{error}</p> : null}

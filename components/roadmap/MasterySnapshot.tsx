@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { MASTERY_TARGET_POINTS } from "@/lib/mastery";
 import type { DomainMastery, MasteryOverview, MasterySubject } from "@/lib/mastery";
 import { typography } from "@/lib/typography";
 
@@ -26,7 +28,7 @@ function DomainRow({ domain }: { domain: DomainMastery }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span className={`font-sans text-sm font-semibold tabular-nums ${statusColor(domain)}`}>
-              {domain.questionCount === 0 ? "—" : `${domain.score}%`}
+              {domain.questionCount === 0 ? "—" : domain.attemptedPoints < MASTERY_TARGET_POINTS ? "Limited evidence" : `${domain.score}%`}
             </span>
             <ChevronIcon />
           </div>
@@ -34,7 +36,7 @@ function DomainRow({ domain }: { domain: DomainMastery }) {
         <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#ECECEC]">
           <div
             className={`h-full rounded-full ${domain.score >= 75 ? "bg-[#22C55E]" : "bg-[#1BB1F6]"}`}
-            style={{ width: `${domain.score}%` }}
+            style={{ width: `${domain.attemptedPoints < MASTERY_TARGET_POINTS ? 0 : domain.score}%` }}
           />
         </div>
       </summary>
@@ -46,10 +48,12 @@ function DomainRow({ domain }: { domain: DomainMastery }) {
               <div key={skill.skill}>
                 <div className="flex items-center justify-between gap-3">
                   <p className={`${typography.caption} min-w-0 text-[#525252]`}>{skill.skill}</p>
-                  <span className="shrink-0 font-sans text-xs font-medium tabular-nums text-[#087EBA]">{skill.score}%</span>
+                  <span className="shrink-0 font-sans text-xs font-medium tabular-nums text-[#087EBA]">{skill.attemptedPoints < MASTERY_TARGET_POINTS ? "Limited evidence" : `${skill.score}%`}</span>
                 </div>
+                <p className={`mt-1 ${typography.caption}`}>{skill.questionCount} unique question{skill.questionCount === 1 ? "" : "s"} answered</p>
+                <Link href={`/question-bank?${new URLSearchParams({ practice: "1", subject: domain.subject, domain: domain.domain, skill: skill.skill, count: "10" })}`} className="mt-2 inline-flex min-h-11 items-center font-sans text-sm font-medium text-[#087EBA] underline" aria-label={`Practice this skill: ${skill.skill}`}>Practice this skill</Link>
                 <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[#E5E5E5]">
-                  <div className="h-full rounded-full bg-[#1BB1F6]" style={{ width: `${skill.score}%` }} />
+                  <div className="h-full rounded-full bg-[#1BB1F6]" style={{ width: `${skill.attemptedPoints < MASTERY_TARGET_POINTS ? 0 : skill.score}%` }} />
                 </div>
               </div>
             ))}
@@ -89,7 +93,7 @@ export default function MasterySnapshot({ overview }: { overview: MasteryOvervie
           </svg>
         </span>
       </div>
-      <p className={`mt-2 ${typography.cardHint}`}>Harder questions contribute more evidence to your score.</p>
+      <p className={`mt-2 ${typography.cardHint}`}>Limited evidence means you need more practice before a mastery percentage is shown. It does not mean low mastery.</p>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2 lg:gap-8">
         <SubjectSection title="Math" subject="math" overview={overview} />

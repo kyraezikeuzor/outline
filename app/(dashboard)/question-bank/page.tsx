@@ -51,6 +51,8 @@ export default async function QuestionBankPage({
     subject?: string;
     tier?: string;
     count?: string;
+    domain?: string;
+    skill?: string;
   };
 }) {
   const inPractice =
@@ -74,14 +76,16 @@ export default async function QuestionBankPage({
   const subject = parseSubject(searchParams?.subject);
   const tier = parseTier(searchParams?.tier);
   const count = parseCount(searchParams?.count);
+  const domain = searchParams?.domain?.trim();
+  const skill = searchParams?.skill?.trim();
   const requestedId = searchParams?.question?.trim();
 
   const [access, question, bookmarkedIds] = await Promise.all([
     getCurrentQuestionAccess(),
     requestedId
       ? (await getQuestionById(requestedId)) ??
-        (await getRandomQuestion({ subject, tier }))
-      : getRandomQuestion({ subject, tier }),
+        (await getRandomQuestion({ subject, tier, domain, skill }))
+      : getRandomQuestion({ subject, tier, domain, skill }),
     getBookmarkedQuestionIds(),
   ]);
   const allowedSessionLength = requestedId
@@ -96,6 +100,8 @@ export default async function QuestionBankPage({
         initialQuestion={question}
         initialSubject={subject}
         initialTier={tier}
+        initialDomain={domain}
+        initialSkill={skill}
         sessionLength={allowedSessionLength}
         initialBookmarkedIds={bookmarkedIds}
         accessLimitReached={!question && !access.canAccessNewQuestion}

@@ -24,7 +24,7 @@ export default function BillingPortalButton() {
     <div className="mt-8 rounded-2xl border-2 border-arc-line bg-white p-5">
       <h2 className="font-dm text-xl font-medium tracking-normal text-arc-ink">Billing</h2>
       <p className="mt-2 font-sans text-sm leading-6 text-arc-muted">
-        Update your payment method, view invoices, or cancel a recurring Pro plan securely in Stripe.
+        Update your payment method, view invoices, or cancel a recurring Max plan securely in Stripe.
       </p>
       <button
         type="button"

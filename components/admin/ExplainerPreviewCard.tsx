@@ -48,7 +48,7 @@ export default function ExplainerPreviewCard({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Image
-              src="/neoprep-mark-white.png"
+              src="/tutormigo-mark-white.png"
               alt="Tutormigo"
               width={24}
               height={24}

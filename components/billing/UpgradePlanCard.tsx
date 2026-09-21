@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { FREE_QUESTION_LIMIT } from "@/lib/access-policy";
 
-type UpgradeToProCardProps = {
+type UpgradePlanCardProps = {
   usedQuestions: number;
   questionLimit: number | null;
   className?: string;
   compact?: boolean;
 };
 
-export default function UpgradeToProCard({
+export default function UpgradePlanCard({
   usedQuestions,
   questionLimit,
   className = "",
   compact = false,
-}: UpgradeToProCardProps) {
+}: UpgradePlanCardProps) {
   const safeLimit = Math.max(1, questionLimit ?? FREE_QUESTION_LIMIT);
   const used = Math.min(Math.max(0, usedQuestions), safeLimit);
   const remaining = Math.max(0, safeLimit - used);
@@ -37,14 +37,14 @@ export default function UpgradeToProCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="rounded-full bg-[#FDE7F4] px-3 py-1 font-sans text-xs font-bold tracking-wide text-[#EC4899]">
-              PRO
+              PLUS
             </span>
             <p className="font-dm text-xl font-medium tracking-normal text-[#FDE7F4] sm:text-2xl">
               {headline}
             </p>
           </div>
           <p className="mt-2 font-sans text-sm leading-relaxed text-[#FDE7F4] sm:text-base">
-            Unlock all 1,000+ questions, your Roadmap, and live lessons with Pro.
+            Unlock all 1,000+ questions, full explanations, and adaptive practice with Plus.
           </p>
 
           <div

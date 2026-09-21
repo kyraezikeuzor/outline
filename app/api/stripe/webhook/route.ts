@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe/server";
+import { parseCheckoutReference, planIdFromAmountCents } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
@@ -24,20 +25,68 @@ async function userIdForCustomer(stripeCustomerId: string | null) {
   return data?.id ?? null;
 }
 
-async function syncCheckoutSession(session: Stripe.Checkout.Session) {
-  if (session.mode !== "payment") return;
+async function linkCustomerToProfile(studentId: string, stripeCustomerId: string | null) {
+  if (!stripeCustomerId) return;
+  const admin = createAdminClient();
+  await admin
+    .from("profiles")
+    .update({ stripe_customer_id: stripeCustomerId })
+    .eq("id", studentId)
+    .is("stripe_customer_id", null);
+}
 
-  const studentId = session.metadata?.supabase_user_id ?? session.client_reference_id;
+async function syncCheckoutSession(session: Stripe.Checkout.Session) {
+  const reference = parseCheckoutReference(session.client_reference_id);
+  const studentId = session.metadata?.supabase_user_id ?? reference.userId;
   if (!studentId) throw new Error(`Checkout Session ${session.id} has no Supabase user ID.`);
 
+  const stripeCustomerIdForSession = customerId(session.customer);
+
+  // Payment Links mint a fresh customer, so record it against the profile;
+  // subsequent customer.subscription.* events resolve the student from it.
+  await linkCustomerToProfile(studentId, stripeCustomerIdForSession);
+
+  if (session.mode !== "payment") {
+    // Stake the student/plan mapping now. Stripe may deliver
+    // customer.subscription.created before this event, and that handler has no
+    // metadata of ours on a Payment Link purchase, so it resolves the student
+    // by looking this row up. Period bounds are filled in by that handler.
+    const subscriptionId =
+      typeof session.subscription === "string"
+        ? session.subscription
+        : session.subscription?.id ?? null;
+    const planId = reference.planId ?? planIdFromAmountCents(session.amount_total);
+
+    if (subscriptionId) {
+      const admin = createAdminClient();
+      const { error } = await admin.from("subscriptions").upsert(
+        {
+          student_id: studentId,
+          ...(planId ? { plan: planId } : {}),
+          status: "active",
+          provider: "stripe",
+          stripe_customer_id: stripeCustomerIdForSession,
+          stripe_subscription_id: subscriptionId,
+          currency: session.currency ?? "usd",
+          billing_interval: "month",
+          billing_interval_count: 1,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "stripe_subscription_id" }
+      );
+      if (error) throw new Error(error.message);
+    }
+    return;
+  }
+
   const admin = createAdminClient();
-  const stripeCustomerId = customerId(session.customer);
+  const stripeCustomerId = stripeCustomerIdForSession;
   const amountCents = session.amount_total ?? 0;
 
   const { error } = await admin.from("subscriptions").upsert(
     {
       student_id: studentId,
-      plan: session.metadata?.plan_id ?? "until_sat",
+      plan: session.metadata?.plan_id ?? "plus",
       monthly_price: amountCents / 100,
       started_at: isoFromUnix(session.created),
       status:
@@ -61,15 +110,31 @@ async function syncCheckoutSession(session: Stripe.Checkout.Session) {
   if (error) throw new Error(error.message);
 }
 
+async function userIdForSubscriptionRow(stripeSubscriptionId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("subscriptions")
+    .select("student_id")
+    .eq("stripe_subscription_id", stripeSubscriptionId)
+    .maybeSingle();
+  return data?.student_id ?? null;
+}
+
 async function syncSubscription(subscription: Stripe.Subscription) {
   const stripeCustomerId = customerId(subscription.customer);
   const studentId =
     subscription.metadata?.supabase_user_id ??
-    (await userIdForCustomer(stripeCustomerId));
+    (await userIdForCustomer(stripeCustomerId)) ??
+    (await userIdForSubscriptionRow(subscription.id));
   if (!studentId) throw new Error(`Subscription ${subscription.id} has no Supabase user ID.`);
 
   const item = subscription.items.data[0];
   const amountCents = item?.price.unit_amount ?? 0;
+  // A Payment Link subscription carries no metadata of ours, so fall back to
+  // the amount. Never default blindly — that would relabel a Plus row as Max
+  // on the next subscription.updated event.
+  const resolvedPlan =
+    subscription.metadata?.plan_id ?? planIdFromAmountCents(amountCents);
   const intervalCount = item?.price.recurring?.interval_count ?? 1;
   const monthlyPrice =
     item?.price.recurring?.interval === "month"
@@ -80,7 +145,7 @@ async function syncSubscription(subscription: Stripe.Subscription) {
   const { error } = await admin.from("subscriptions").upsert(
     {
       student_id: studentId,
-      plan: subscription.metadata?.plan_id ?? "pro",
+      ...(resolvedPlan ? { plan: resolvedPlan } : {}),
       monthly_price: monthlyPrice,
       started_at: isoFromUnix(subscription.start_date),
       status: subscription.status,

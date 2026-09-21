@@ -2,12 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import MathText from "./MathText";
+import QuestionChoices from "./QuestionChoices";
+import QuestionExplanation from "./QuestionExplanation";
 import GraphRenderer, { type GraphSpec } from "./graphs/GraphRenderer";
 import { completePracticeTestRun, getRandomQuestion, savePracticeTestAnswer, submitAttempt, toggleBookmark, type Question } from "@/app/actions";
 import type { SubjectFilter, TierFilter } from "@/lib/subjects";
 import { MATH_DOMAINS } from "@/lib/subjects";
 import { splitLeadingEquations } from "@/lib/mathText";
-import { getSatSectionScore, type ScoreRange } from "@/lib/satScore";
+import {
+  getDigitalSatScore,
+  type DigitalSatModuleCorrect,
+  type DigitalSatModuleKey,
+} from "@/lib/satScore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DesmosCalculatorPanel, { CalculatorButton } from "./DesmosCalculator";
@@ -38,56 +44,16 @@ function formatTime(totalSeconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function ScoreLine({ label, score, range }: { label: string; score: number; range: ScoreRange }) {
+function ScoreLine({ label, score }: { label: string; score: number }) {
   return (
     <div className="flex items-center justify-between gap-4 text-left">
       <div>
         <p className="font-sans text-lg font-medium text-arc-ink">{label}</p>
-        <p className="mt-1 font-sans text-sm text-arc-muted">Conversion range {range.lower}–{range.upper}</p>
+        <p className="mt-1 font-sans text-sm text-arc-muted">Estimated score · 200–800</p>
       </div>
       <p className="font-sans text-5xl font-medium tabular-nums text-arc-ink">{score}</p>
     </div>
   );
-}
-
-function formatCorrectDisplay(question: Question) {
-  const key = question.correct_answer?.trim() ?? "";
-  if (question.choices && key in question.choices) {
-    return { letter: key, text: question.choices[key] };
-  }
-  const upper = key.toUpperCase();
-  if (question.choices && upper in question.choices) {
-    return { letter: upper, text: question.choices[upper] };
-  }
-  return { letter: null as string | null, text: key };
-}
-
-/** Split SAT rationales so each new sentence starts on its own line. */
-function splitRationaleByChoices(text: string): string[] {
-  let cleaned = text.replace(/\s+/g, " ").trim();
-  if (!cleaned) return [];
-
-  // Bank text often jams sentences: "well.Choice B" → "well. Choice B"
-  cleaned = cleaned.replace(/([.!?])([A-Z])/g, "$1 $2");
-
-  // Split after sentence-ending punctuation when a new sentence follows.
-  // Skip common abbreviations (Mr./Mrs./Ms./Dr./etc.).
-  const parts = cleaned
-    .split(
-      /(?<=(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|vs|etc|approx))[.!?])(?=\s+[A-Z])/
-    )
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  if (parts.length > 1) return parts;
-
-  const byChoice = cleaned
-    .split(/(?=\bChoice\s+[A-D]\b)/i)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (byChoice.length > 1) return byChoice;
-
-  return [cleaned];
 }
 
 /** Split passage/stimulus from the question prompt when the stem packs both. */
@@ -190,6 +156,8 @@ export default function QuestionCard({
   embedded = false,
   initialSubject = "all",
   initialTier = "all",
+  initialDomain,
+  initialSkill,
   /** When set (e.g. 5 from Question Bank), practice ends after this many questions. */
   sessionLength,
   /** Fixed question list (assignment practice). Overrides random bank fetching. */
@@ -213,6 +181,8 @@ export default function QuestionCard({
   embedded?: boolean;
   initialSubject?: SubjectFilter;
   initialTier?: TierFilter;
+  initialDomain?: string;
+  initialSkill?: string;
   sessionLength?: number;
   questionQueue?: Question[];
   assignmentId?: string;
@@ -232,7 +202,7 @@ export default function QuestionCard({
   testId?: string;
   testRunId?: string;
   testCompleted?: boolean;
-  modules?: { title: string; questions: Question[]; minutes: number; section?: "reading_writing" | "math" }[];
+  modules?: { key: DigitalSatModuleKey; title: string; questions: Question[]; minutes: number; section?: "reading_writing" | "math" }[];
 }) {
   const router = useRouter();
   const { setPracticeActive } = usePracticeSession();
@@ -303,7 +273,6 @@ export default function QuestionCard({
     () => new Set(initialBookmarkedIds ?? [])
   );
   const [eliminated, setEliminated] = useState<Set<string>>(() => new Set());
-  const [selectPulse, setSelectPulse] = useState<{ letter: string; n: number } | null>(null);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [accessError, setAccessError] = useState("");
   const passageRef = useRef<HTMLDivElement>(null);
@@ -376,6 +345,8 @@ export default function QuestionCard({
           excludeIds: [...seen],
           tier: selectedTier,
           subject: selectedSubject,
+      domain: initialDomain,
+      skill: initialSkill,
         });
         if (!next || seen.has(next.question_id)) break;
         seen.add(next.question_id);
@@ -498,7 +469,6 @@ export default function QuestionCard({
     setSubmitted(false);
     setIsCorrect(null);
     setShowExplanation(false);
-    setSelectPulse(null);
     setAccessError("");
   }
 
@@ -514,8 +484,7 @@ export default function QuestionCard({
       setIsCorrect(result.correct);
       setSubmitted(true);
       setShowExplanation(false);
-      setSelectPulse(null);
-    } else {
+      } else {
       resetAttemptState();
       setSelected(sessionSelections[q.question_id] ?? "");
     }
@@ -617,6 +586,8 @@ export default function QuestionCard({
       excludeIds: history.map((item) => item.question_id),
       tier: selectedTier,
       subject: selectedSubject,
+      domain: initialDomain,
+      skill: initialSkill,
     });
     applyQuestion(next, "append");
     setLoadingNext(false);
@@ -751,6 +722,8 @@ export default function QuestionCard({
     const first = await getRandomQuestion({
       tier: selectedTier,
       subject: selectedSubject,
+      domain: initialDomain,
+      skill: initialSkill,
     });
     const collected: Question[] = [];
     const seen = new Set<string>();
@@ -764,6 +737,8 @@ export default function QuestionCard({
         excludeIds: [...seen],
         tier: selectedTier,
         subject: selectedSubject,
+      domain: initialDomain,
+      skill: initialSkill,
       });
       if (!next || seen.has(next.question_id)) break;
       seen.add(next.question_id);
@@ -820,11 +795,11 @@ export default function QuestionCard({
               You’ve reached 100 questions
             </h1>
             <p className="mt-3 font-sans text-sm leading-6 text-arc-muted">
-              Upgrade to Pro for full access to the question bank, or review questions you have already attempted.
+              Upgrade to Plus for full access to the question bank, or review questions you have already attempted.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Link href="/pricing" className="arc-btn-primary px-6 py-3 text-base">
-                Upgrade to Pro
+                Upgrade to Plus
               </Link>
               <Link href="/question-bank" className="arc-btn-secondary px-6 py-3 text-base">
                 Back to Question Bank
@@ -836,7 +811,8 @@ export default function QuestionCard({
     }
     return (
       <div className="mx-auto max-w-2xl px-8 py-16 text-center">
-        <p className="text-sm text-arc-muted">No questions available right now.</p>
+        <p className="text-sm text-arc-muted">{initialSkill ? `No new questions are available for ${initialSkill} right now. You can revisit questions in Mistakes or Saved.` : "No questions available right now."}</p>
+        <Link href="/question-bank" className="arc-btn-secondary mt-4 inline-flex min-h-11 items-center px-5">Back to Question Bank</Link>
       </div>
     );
   }
@@ -917,22 +893,22 @@ export default function QuestionCard({
           return Boolean(answer) && isCorrectAnswer(answer, item.correct_answer);
         }).length,
       }));
-      const readingRaw = scoredModules
-        .filter((module) => module.section === "reading_writing" || module.title.startsWith("Reading"))
-        .reduce((total, module) => total + module.correct, 0);
-      const mathRaw = scoredModules
-        .filter((module) => module.section === "math" || module.title.startsWith("Math"))
-        .reduce((total, module) => total + module.correct, 0);
-      const readingScore = getSatSectionScore("reading_writing", readingRaw);
-      const mathScore = getSatSectionScore("math", mathRaw);
-      const totalScore = readingScore.score + mathScore.score;
+      const correctByModule: DigitalSatModuleCorrect = {
+        reading_writing_1: 0,
+        reading_writing_2: 0,
+        math_1: 0,
+        math_2: 0,
+      };
+      for (const module of scoredModules) correctByModule[module.key] = module.correct;
+      const score = getDigitalSatScore(correctByModule);
 
       return (
-        <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-center overflow-y-auto bg-white px-6 py-10 sm:px-12">
+        <div className="fixed inset-0 z-[100] flex min-h-[100dvh] items-start overflow-y-auto bg-white px-6 py-10 sm:px-12">
           <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] lg:items-start">
             <section>
               <p className="font-sans text-xs font-semibold uppercase tracking-wide text-arc-muted">Practice test complete</p>
               <h1 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-arc-ink">Your module results</h1>
+              <a href="#test-question-review" className="arc-btn-primary mt-5 inline-flex min-h-11 items-center px-5">Review questions and answers</a>
               <div className="mt-8 space-y-7">
                 {scoredModules.map((module) => {
                   const percent = module.questions.length ? (module.correct / module.questions.length) * 100 : 0;
@@ -949,15 +925,37 @@ export default function QuestionCard({
                   );
                 })}
               </div>
+              <div id="test-question-review" className="mt-8 scroll-mt-5">
+                <h2 className="text-xl font-semibold text-arc-ink">Review questions and answers</h2>
+                <p className="mt-2 text-sm text-arc-muted">Open a question to see your answer and its explanation. Reviewing does not change your score.</p>
+                {scoredModules.map((module) => <section key={module.key} className="mt-6">
+                  <h3 className="font-semibold text-arc-ink">{module.title}</h3>
+                  <div className="mt-3 space-y-2">{module.questions.map((item, index) => {
+                    const answer = sessionSelections[item.question_id] ?? "";
+                    const status = !answer ? "Unanswered" : isCorrectAnswer(answer, item.correct_answer) ? "Correct" : "Incorrect";
+                    return <details key={item.question_id} className="rounded-xl border border-arc-line bg-white p-4">
+                      <summary className="cursor-pointer font-sans text-sm font-medium">Question {index + 1} · {status}{item.skill ? ` · ${item.skill}` : ""}</summary>
+                      <div className="mt-4 space-y-4">
+                        {item.graph_spec ? <GraphRenderer spec={item.graph_spec as GraphSpec} /> : null}
+                        {item.image_urls?.stem ? <img src={item.image_urls.stem} alt="Question figure" className="max-w-full" /> : null}
+                        <MathText text={item.stem} block className="question-prose" />
+                        {item.choices ? <dl className="space-y-2">{Object.entries(item.choices).map(([letter, text]) => <div key={letter} className="flex gap-3"><dt className="font-semibold">{letter}</dt><dd><MathText text={text} /></dd></div>)}</dl> : null}
+                        <p className="font-sans text-sm font-medium">Your answer: {answer || "Unanswered"} · {status}</p>
+                        <QuestionExplanation question={item} />
+                      </div>
+                    </details>;
+                  })}</div>
+                </section>)}
+              </div>
             </section>
             <aside className="rounded-3xl border border-arc-line bg-white p-7 text-center shadow-sm sm:p-10">
-              <p className="font-sans text-2xl font-medium text-arc-ink">Total Score</p>
-              <p className="mt-5 font-sans text-8xl font-semibold tracking-tight text-arc-ink">{totalScore}</p>
-              <p className="mt-2 font-sans text-lg text-arc-muted">400–1600</p>
+              <p className="font-sans text-2xl font-medium text-arc-ink">Estimated SAT Score</p>
+              <p className="mt-5 font-sans text-8xl font-semibold tracking-tight text-arc-ink">{score.total}</p>
+              <p className="mt-2 font-sans text-lg text-arc-muted">400–1600 · module-aware estimate</p>
               <div className="my-8 border-t border-arc-line" />
-              <ScoreLine label="Reading & Writing Score" score={readingScore.score} range={readingScore} />
+              <ScoreLine label="Reading & Writing Score" score={score.reading_writing} />
               <div className="my-7 border-t border-arc-line" />
-              <ScoreLine label="Math Score" score={mathScore.score} range={mathScore} />
+              <ScoreLine label="Math Score" score={score.math} />
               <button type="button" onClick={returnToBankLanding} className="arc-btn-primary mt-9 w-full rounded-xl px-5 py-3 text-base">
                 Back to Practice Tests
               </button>
@@ -1036,7 +1034,8 @@ export default function QuestionCard({
   if (!question) {
     return (
       <div className="mx-auto max-w-2xl px-8 py-16 text-center">
-        <p className="text-sm text-arc-muted">No questions available right now.</p>
+        <p className="text-sm text-arc-muted">{initialSkill ? `No new questions are available for ${initialSkill} right now. You can revisit questions in Mistakes or Saved.` : "No questions available right now."}</p>
+        <Link href="/question-bank" className="arc-btn-secondary mt-4 inline-flex min-h-11 items-center px-5">Back to Question Bank</Link>
       </div>
     );
   }
@@ -1044,7 +1043,6 @@ export default function QuestionCard({
   const isGridIn = !question.choices || Object.keys(question.choices).length === 0;
   const panelOpen = !isTestMode && submitted && showExplanation;
   const sidePanelOpen = panelOpen || calculatorOpen || highlightsOpen;
-  const correctDisplay = formatCorrectDisplay(question);
 
   const { equations: leadingEquations, prose: equationProse } =
     splitLeadingEquations(question.stem);
@@ -1451,138 +1449,20 @@ export default function QuestionCard({
                     {selected && !submitted && !isTestMode ? <button type="button" onClick={handleSubmit} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-arc-accent px-4 py-2 text-sm font-semibold text-white">Answer</button> : null}
                     </div>
                   ) : (
-                    <div className="space-y-2.5">
-                      {Object.entries(question.choices!).map(([letter, text]) => {
-                        const isSelected = selected === letter;
-                        const isEliminated = eliminated.has(letter);
-                        const isTheCorrectAnswer =
-                          normalize(letter) === normalize(question.correct_answer);
-                        const isWrongPick =
-                          submitted && isSelected && !isTheCorrectAnswer;
-
-                        let stateClasses =
-                          "border border-arc-muted/40 bg-white hover:border-arc-muted/70";
-                        let bubbleClasses =
-                          "border-arc-muted/50 bg-transparent text-arc-ink";
-
-                        if (submitted && !isTestMode) {
-                          if (isTheCorrectAnswer) {
-                            stateClasses = "border border-arc-correct bg-arc-correctBg";
-                            bubbleClasses = "border-arc-correct bg-arc-correct text-white";
-                          } else if (isWrongPick) {
-                            stateClasses =
-                              "border border-arc-incorrect bg-arc-incorrectBg";
-                            bubbleClasses =
-                              "border-arc-incorrect bg-arc-incorrect text-white";
-                          } else {
-                            stateClasses =
-                              "border border-arc-muted/30 bg-white opacity-55";
-                            bubbleClasses =
-                              "border-arc-muted/40 bg-transparent text-arc-ink/50";
-                          }
-                        } else if (isSelected) {
-                          stateClasses = "border border-arc-accent bg-arc-accentSoft";
-                          bubbleClasses = "border-arc-accent bg-arc-accent text-white";
-                        } else if (isEliminated) {
-                          stateClasses = "border border-arc-muted/30 bg-white opacity-60";
-                          bubbleClasses =
-                            "border-arc-muted/40 bg-transparent text-arc-ink/50";
-                        }
-
-                        const isPulsing = selectPulse?.letter === letter;
-
-                        return (
-                          <div key={letter} className="relative flex items-center gap-2">
-                            <button
-                              type="button"
-                              disabled={submitted}
-                              onClick={() => {
-                                setSelected(letter);
-                                setSessionSelections((prev) => ({ ...prev, [question.question_id]: letter }));
-                                if (isTestMode && testId && testRunId) void savePracticeTestAnswer({ testId, runId: testRunId, questionId: question.question_id, selectedAnswer: letter });
-                                setSelectPulse(null);
-                                window.setTimeout(() => {
-                                  setSelectPulse({ letter, n: Date.now() });
-                                }, 0);
-                              }}
-                              onAnimationEnd={(e) => {
-                                if (e.target === e.currentTarget) setSelectPulse(null);
-                              }}
-                              className={`question-prose choice-text flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-4 py-3 ${isSelected && !submitted && !isTestMode ? "pr-28" : ""} text-left transition-[border-color,background-color,box-shadow] duration-150 ${stateClasses}${
-                                isPulsing ? " choice-select-pulse" : ""
-                              }`}
-                            >
-                              <span
-                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-sans text-sm font-semibold ${bubbleClasses}`}
-                                aria-hidden={isWrongPick}
-                              >
-                                {isWrongPick ? (
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    className="h-4 w-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    strokeLinecap="round"
-                                  >
-                                    <path d="M6 6l12 12M18 6L6 18" />
-                                  </svg>
-                                ) : (
-                                  letter
-                                )}
-                              </span>
-                              <MathText
-                                text={text}
-                                className={`math-text min-w-0 flex-1 ${
-                                  isEliminated && !submitted ? "line-through opacity-70" : ""
-                                }`}
-                              />
-                              {question.image_urls?.[`choice_${letter}`] && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={question.image_urls[`choice_${letter}`]}
-                                  alt={`Choice ${letter}`}
-                                  className="max-h-10"
-                                />
-                              )}
-                            </button>
-                            {isSelected && !submitted && !isTestMode ? (
-                              <button
-                                type="button"
-                                onClick={handleSubmit}
-                                className="absolute right-14 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-arc-accent px-4 py-2 font-sans text-sm font-semibold text-white transition hover:bg-arc-accentDeep"
-                              >
-                                Answer
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              disabled={submitted}
-                              onClick={() => toggleEliminate(letter)}
-                              aria-label={
-                                isEliminated
-                                  ? `Restore choice ${letter}`
-                                  : `Eliminate choice ${letter}`
-                              }
-                              aria-pressed={isEliminated}
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border font-sans text-sm font-medium transition disabled:opacity-40 ${
-                                isEliminated
-                                  ? "border-arc-ink bg-arc-ink text-white"
-                                  : "border-arc-line bg-white text-arc-muted hover:border-arc-muted hover:text-arc-ink"
-                              }`}
-                            >
-                              <span className="relative leading-none">
-                                {letter}
-                                <span
-                                  className="absolute left-1/2 top-1/2 h-px w-[1.1em] -translate-x-1/2 -translate-y-1/2 rotate-[-28deg] bg-current"
-                                  aria-hidden
-                                />
-                              </span>
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <QuestionChoices
+                      question={question}
+                      selected={selected}
+                      submitted={submitted}
+                      isTestMode={isTestMode}
+                      eliminated={eliminated}
+                      onSelect={(letter) => {
+                        setSelected(letter);
+                        setSessionSelections((prev) => ({ ...prev, [question.question_id]: letter }));
+                        if (isTestMode && testId && testRunId) void savePracticeTestAnswer({ testId, runId: testRunId, questionId: question.question_id, selectedAnswer: letter });
+                      }}
+                      onSubmit={handleSubmit}
+                      onEliminate={toggleEliminate}
+                    />
                   )}
                 </div>
               </div>
@@ -1770,40 +1650,7 @@ export default function QuestionCard({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5 font-sans">
-            <div className="mb-5 rounded-2xl border border-arc-line bg-white p-4">
-              <p className="mb-3 text-sm font-medium text-arc-muted">Correct Answer</p>
-              <div className="flex w-full items-center gap-3 rounded-xl bg-arc-correctBg px-3 py-2.5">
-                {correctDisplay.letter && (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-arc-correct text-sm font-semibold text-white">
-                    {correctDisplay.letter}
-                  </span>
-                )}
-                <MathText
-                  text={correctDisplay.text}
-                  className="min-w-0 font-sans text-base font-medium text-arc-ink"
-                />
-              </div>
-            </div>
-
-            {question.rationale ? (
-              <>
-                <p className="mb-3 text-sm font-semibold text-arc-ink">Step-by-step explanation</p>
-                <div className="space-y-4">
-                  {splitRationaleByChoices(question.rationale).map((line, i) => (
-                    <MathText
-                      key={`${i}-${line.slice(0, 24)}`}
-                      block
-                      text={line}
-                      className="font-sans text-base font-normal leading-relaxed text-arc-ink"
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-arc-muted">No explanation available for this question.</p>
-            )}
-          </div>
+          <QuestionExplanation question={question} />
         </div>
       </aside>
 

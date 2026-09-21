@@ -352,9 +352,7 @@ export default function Sidebar({
     >
       {!hideBrand && (
         <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#1BB1F6]">
-            <Image src="/neoprep-mark-white.png" alt="Tutormigo" width={22} height={22} className="h-[22px] w-[22px] object-contain" priority />
-          </span>
+          <Image src="/tutormigo-mark-blue.png" alt="Tutormigo" width={28} height={28} className="h-7 w-7 shrink-0 object-contain" priority />
           <span className="min-w-0 flex-1 truncate font-sans text-xl font-medium tracking-normal text-[#0A0A0A]">
             Tutormigo
           </span>

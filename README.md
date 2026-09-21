@@ -1,4 +1,4 @@
-# ManyPrep
+# Tutormigo
 
 Minimal question-bank app: magic-link login, one question at a time, submit an
 attempt, see correct/incorrect, toggle the explanation.
@@ -76,4 +76,4 @@ production URL to Supabase's redirect URLs (step 4 above).
   for that view. Matches "each attempt is a submit" from your spec, but
   means there's currently no way to re-attempt the *same* question from
   this screen (only "Next question," which pulls a different one).
-# manyprep
+# tutormigo

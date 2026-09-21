@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-export default function NeoPrepLogo({
+export default function TutormigoLogo({
   className = "h-8 w-8",
   priority = false,
 }: {
@@ -9,12 +9,12 @@ export default function NeoPrepLogo({
 }) {
   return (
     <Image
-      src="/neoprep-logo.png"
+      src="/tutormigo-mark-blue.png"
       alt="Tutormigo"
       width={128}
       height={128}
       priority={priority}
-      className={`rounded-lg object-cover ${className}`}
+      className={`object-contain ${className}`}
     />
   );
 }

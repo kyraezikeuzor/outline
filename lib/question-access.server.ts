@@ -5,6 +5,7 @@ import {
   FREE_QUESTION_LIMIT,
   type QuestionAccess,
 } from "@/lib/access-policy";
+import { isLegacyPaidPlanId } from "@/lib/pricing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,13 +26,27 @@ function hasCurrentAccess(subscription: SubscriptionRow, now: number) {
   return !end || new Date(end).getTime() > now;
 }
 
+/**
+ * Which entitlement level a stored `subscriptions.plan` grants. Legacy plans
+ * predate the Free/Plus/Max split and bundled the Roadmap and live lessons, so
+ * they resolve to Max rather than Plus.
+ */
+function planEntitlement(planId: string): "plus" | "max" {
+  if (planId === "plus") return "plus";
+  if (planId === "max") return "max";
+  if (isLegacyPaidPlanId(planId)) return "max";
+  return "plus";
+}
+
 function planLabel(planId: string) {
-  if (planId === "until_sat") return "Pro · Until SAT";
-  if (planId === "monthly") return "Pro · 1 Month";
-  if (planId === "quarterly") return "Pro · 3 Months";
-  if (planId === "six_months") return "Pro · 6 Months";
-  if (planId === "bootcamp") return "Pro · Bootcamp";
-  return "Pro";
+  if (planId === "plus") return "Plus";
+  if (planId === "max") return "Max";
+  if (planId === "until_sat") return "Max · Until SAT (legacy)";
+  if (planId === "monthly") return "Max · 1 Month (legacy)";
+  if (planId === "quarterly") return "Max · 3 Months (legacy)";
+  if (planId === "six_months") return "Max · 6 Months (legacy)";
+  if (planId === "bootcamp") return "Max · Bootcamp";
+  return "Plus";
 }
 
 export async function getQuestionAccessForUser(
@@ -87,11 +102,13 @@ export async function getQuestionAccessForUser(
   const uniqueQuestionsUsed = attemptedIds.size;
 
   if (isPro) {
-    const planId = isAdmin && !activeSubscription ? "admin" : activeSubscription!.plan;
+    const adminOnly = isAdmin && !activeSubscription;
+    const planId = adminOnly ? "admin" : activeSubscription!.plan;
     return {
-      tier: "pro",
+      // Admins get the top tier implicitly, as they did before the split.
+      tier: adminOnly ? "max" : planEntitlement(planId),
       planId,
-      planLabel: isAdmin && !activeSubscription ? "Pro · Admin" : planLabel(planId),
+      planLabel: adminOnly ? "Max · Admin" : planLabel(planId),
       isPro: true,
       uniqueQuestionsUsed,
       questionLimit: null,

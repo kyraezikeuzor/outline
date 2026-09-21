@@ -221,7 +221,7 @@ function buildSystemPrompt(referenceKind: QuestionReferenceKind, assets: PromptA
   return {
     referenceFile,
     system: [
-      "You are ArcPrep's SAT question generation engine.",
+      "You are Tutormigo's SAT question generation engine.",
       "Follow the exact instructions in the embedded source documents below.",
       "For this API request, Stage 1 is skipped because no source material is being analyzed.",
       "Perform Stage 2 only and return strict JSON with no prose outside the JSON payload.",
@@ -264,7 +264,7 @@ function buildUserPrompt(params: {
       : existingStems.map((stem, index) => `${index + 1}. ${stem}`).join("\n");
 
   return [
-    `Generate ${count} brand-new original ArcPrep SAT questions.`,
+    `Generate ${count} brand-new original Tutormigo SAT questions.`,
     `Use domain "${domain}" exactly.`,
     `Use skill "${skill}" exactly.`,
     `Set tier to ${tier} on every object.`,
@@ -289,7 +289,7 @@ function buildUserPrompt(params: {
     JSON.stringify(
       {
         question_id: "short random id",
-        source: "ArcPrep",
+        source: "Tutormigo",
         domain,
         skill,
         tier,

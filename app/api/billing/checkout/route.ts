@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import SAT_DATES from "@/lib/sat-dates.json";
 import {
-  getPricingPolicy,
-  getUntilSatQuote,
-  MONTHLY_PRICE_DOLLARS,
-  PricingPlanId,
-  QUARTERLY_PRICE_DOLLARS,
-  SIX_MONTH_PRICE_DOLLARS,
+  buildCheckoutReference,
+  CheckoutPlanId,
+  getConfiguredStripePriceId,
+  getPaymentLink,
+  getPlanTier,
+  getStripeProductId,
+  isCheckoutPlanId,
+  MAX_MONTHLY_PRICE_DOLLARS,
+  PLUS_MONTHLY_PRICE_DOLLARS,
+  toCents,
 } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -17,47 +20,21 @@ import {
 
 export const runtime = "nodejs";
 
-const PLAN_IDS: PricingPlanId[] = [
-  "until_sat",
-  "monthly",
-  "quarterly",
-  "six_months",
-];
-
-function isPlanId(value: unknown): value is PricingPlanId {
-  return typeof value === "string" && PLAN_IDS.includes(value as PricingPlanId);
-}
-
-function recurringAmount(planId: Exclude<PricingPlanId, "until_sat">) {
-  if (planId === "quarterly") return QUARTERLY_PRICE_DOLLARS;
-  if (planId === "six_months") return SIX_MONTH_PRICE_DOLLARS;
-  return MONTHLY_PRICE_DOLLARS;
-}
-
-function recurringIntervalCount(planId: Exclude<PricingPlanId, "until_sat">) {
-  if (planId === "quarterly") return 3;
-  if (planId === "six_months") return 6;
-  return 1;
+function planAmountDollars(planId: CheckoutPlanId) {
+  return planId === "plus"
+    ? PLUS_MONTHLY_PRICE_DOLLARS
+    : MAX_MONTHLY_PRICE_DOLLARS;
 }
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
-      planId?: unknown;
-      testDate?: unknown;
-    };
+    const body = (await request.json()) as { planId?: unknown };
 
-    if (!isPlanId(body.planId)) {
-      return NextResponse.json({ error: "Choose a valid billing option." }, { status: 400 });
+    if (!isCheckoutPlanId(body.planId)) {
+      return NextResponse.json({ error: "Choose a valid plan." }, { status: 400 });
     }
 
     const planId = body.planId;
-    const testDate = typeof body.testDate === "string" ? body.testDate : "";
-    const selectedSat = SAT_DATES.find((satDate) => satDate.date === testDate);
-
-    if (planId === "until_sat" && !selectedSat) {
-      return NextResponse.json({ error: "Choose a valid upcoming SAT date." }, { status: 400 });
-    }
 
     const supabase = await createClient();
     const {
@@ -65,7 +42,6 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
     const origin = getRequestOrigin(request);
     const pricingQuery = new URLSearchParams({ plan: planId });
-    if (selectedSat) pricingQuery.set("testDate", selectedSat.date);
 
     if (!user) {
       const returnPath = `/pricing?${pricingQuery.toString()}`;
@@ -78,53 +54,64 @@ export async function POST(request: Request) {
       );
     }
 
+    const clientReference = buildCheckoutReference(user.id, planId);
+    const configuredPriceId = getConfiguredStripePriceId(planId);
+
+    // Preferred path: our own Checkout Session against the configured Price, so
+    // the session carries supabase_user_id metadata. Only when a plan has no
+    // Price configured do we fall back to a hosted Payment Link, which cannot
+    // carry metadata and leans on client_reference_id instead.
+    if (!configuredPriceId) {
+      const paymentLink = getPaymentLink(planId);
+      if (paymentLink) {
+        const url = new URL(paymentLink);
+        url.searchParams.set("client_reference_id", clientReference);
+        return NextResponse.json({ url: url.toString() });
+      }
+    }
+
     const customer = await getOrCreateStripeCustomer(user);
-    const policy = getPricingPolicy(planId);
-    const isOneTime = planId === "until_sat";
-    const quote = isOneTime ? getUntilSatQuote(selectedSat!.date) : null;
-    const amount = isOneTime
-      ? quote!.price
-      : recurringAmount(planId as Exclude<PricingPlanId, "until_sat">);
-    const amountCents = Math.round(amount * 100);
+    const amountCents = toCents(planAmountDollars(planId));
     const metadata = {
       supabase_user_id: user.id,
       plan_id: planId,
-      test_date: selectedSat?.date ?? "",
-      access_ends_at: selectedSat ? `${selectedSat.date}T23:59:59.999Z` : "",
+      // Both tiers are monthly subscriptions, so access is bounded by the
+      // billing period rather than a fixed end date like `until_sat` had.
+      access_ends_at: "",
     };
 
-    const priceData = isOneTime
-      ? {
-          currency: "usd" as const,
-          unit_amount: amountCents,
-          product_data: {
-            name: `Tutormigo Pro — ${selectedSat!.label}`,
-            description: `Pro access through ${selectedSat!.date}`,
-            metadata: { plan_id: planId },
-          },
-        }
-      : {
-          currency: "usd" as const,
-          unit_amount: amountCents,
-          recurring: {
-            interval: "month" as const,
-            interval_count: recurringIntervalCount(
-              planId as Exclude<PricingPlanId, "until_sat">
-            ),
-          },
-          product_data: {
-            name: `Tutormigo Pro — ${policy.label}`,
-            metadata: { plan_id: planId },
-          },
-        };
+    const configuredProductId = getStripeProductId(planId);
+    const tier = getPlanTier(planId);
+
+    // Inline price, used when no Price id is configured for this mode. Attach
+    // it to the configured Product when there is one so Dashboard reporting
+    // stays on a single product; otherwise let Stripe create one, which is what
+    // makes a fresh test-mode environment work with no configuration at all.
+    const inlinePriceData = {
+      currency: "usd" as const,
+      unit_amount: amountCents,
+      recurring: { interval: "month" as const, interval_count: 1 },
+      ...(configuredProductId
+        ? { product: configuredProductId }
+        : {
+            product_data: {
+              name: `Tutormigo ${tier.name}`,
+              metadata: { plan_id: planId },
+            },
+          }),
+    };
+
+    const lineItem = configuredPriceId
+      ? { quantity: 1, price: configuredPriceId }
+      : { quantity: 1, price_data: inlinePriceData };
 
     const session = await getStripe().checkout.sessions.create({
-      mode: isOneTime ? "payment" : "subscription",
+      mode: "subscription",
       customer,
-      client_reference_id: user.id,
-      line_items: [{ quantity: 1, price_data: priceData }],
+      client_reference_id: clientReference,
+      line_items: [lineItem],
       metadata,
-      ...(isOneTime ? {} : { subscription_data: { metadata } }),
+      subscription_data: { metadata },
       success_url: `${origin}/settings?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?checkout=canceled&${pricingQuery.toString()}`,
       billing_address_collection: "auto",
@@ -143,4 +130,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

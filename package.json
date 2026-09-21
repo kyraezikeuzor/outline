@@ -1,12 +1,13 @@
 {
-  "name": "manyprep",
+  "name": "tutormigo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:sat-score": "node --experimental-strip-types --test lib/satScore.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

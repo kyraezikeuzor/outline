@@ -11,19 +11,21 @@ npx tsc --noEmit   # the real check — keep this clean
 
 ## Naming
 
-The product goes by four names and they are not interchangeable:
+The product is **Tutormigo** — one word, that spelling everywhere: user-facing
+copy, page titles, `README.md`, `package.json`, the `public/tutormigo-*` assets,
+and the `lib/generation/*` prompts. It has also gone by ManyPrep / ArcPrep /
+NeoPrep / DeltaPrep / Arc Learning / Outline Prep; none of those should come
+back.
 
-| Where | Name |
-|---|---|
-| `package.json`, `README.md` | ManyPrep |
-| User-facing metadata, page titles | **Tutormigo** |
-| `lib/generation/*` prompts, generated `source` field | ArcPrep |
-| Tailwind tokens, CSS component classes | `arc-*` |
+The one exception is the **`arc-*` prefix on Tailwind tokens and CSS component
+classes** (`arc-card`, `arc-btn-primary`, `arc-muted`, …). Those are design
+tokens, not the brand, and renaming them would touch ~900 call sites for no
+user-visible change. Leave them alone.
 
-Use **Tutormigo** for anything a student or visitor reads. Leave `arc-*` alone
-in styles and leave `ArcPrep` alone in the generation prompts — the `source`
-tag on generated rows is load-bearing (it keeps AI-written questions separable
-from College Board-sourced ones). Don't "unify" these without being asked.
+Generated questions are tagged `source: "Tutormigo"`. That tag is load-bearing
+— it keeps AI-written questions separable from College Board-sourced ones — so
+don't drop or repurpose the field. Rows written before the renames carry
+`source: "ArcPrep"`; treat both as AI-generated until they're backfilled.
 
 ## Architecture
 
@@ -152,7 +154,7 @@ discount.
   `arc-card-label`.
 - **Page skeleton** — dashboard pages render
   `<DashboardPageShell><PageHeader title=… />…</DashboardPageShell>`, and export
-  a `metadata` with a `· Tutormigo` suffix.
+  a `metadata` with a `· Outline Prep` suffix.
 - **Icons are inline SVG components**, defined in the file that uses them.
   There is no icon library and adding one would be a large diff — match the
   existing pattern.

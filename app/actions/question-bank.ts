@@ -20,10 +20,12 @@ export type GetRandomQuestionOptions = {
   /** 1 Easy / 2 Medium / 3 Hard — omit or "all" for no tier filter */
   tier?: TierFilter;
   subject?: SubjectFilter;
+  domain?: string;
+  skill?: string;
 };
 
 /** Grabs one random question from the bank. Postgres doesn't have a cheap
- * built-in "random row" for large tables, but at ManyPrep's current scale
+ * built-in "random row" for large tables, but at Tutormigo's current scale
  * (thousands, not millions, of rows) ordering by a random() call server-side
  * is simple and fast enough - revisit if the bank gets much bigger.
  *
@@ -87,6 +89,9 @@ export async function getRandomQuestion(
   } else if (options.subject === "reading_writing") {
     query = query.in("domain", [...READING_DOMAINS]);
   }
+
+  if (options.domain) query = query.eq("domain", options.domain);
+  if (options.skill) query = query.eq("skill", options.skill);
 
   if (skipIds.size === 1) {
     query = query.neq("question_id", [...skipIds][0]);

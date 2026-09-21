@@ -1,3 +1,4 @@
+import { uniqueRecentMistakes } from "@/lib/studentReview";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getRecentErrors } from "@/app/actions";
@@ -40,11 +41,11 @@ function XCircleIcon() {
 }
 
 export default async function MistakesPage() {
-  const errors = await getRecentErrors();
+  const errors = uniqueRecentMistakes(await getRecentErrors());
 
   return (
     <DashboardPageShell>
-      <PageHeader title="Mistakes" />
+      <PageHeader title="Mistakes" description="Each question appears once, with its most recent incorrect attempt." />
 
       {errors.length === 0 ? (
         <div className="arc-card relative mt-8 min-h-[9.5rem] overflow-hidden px-6 py-5">

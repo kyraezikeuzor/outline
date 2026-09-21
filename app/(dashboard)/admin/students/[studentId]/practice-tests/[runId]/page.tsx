@@ -25,10 +25,10 @@ export default async function PracticeTestRunReviewPage({ params }: { params: { 
     <DashboardPageShell>
       <Link href={`/admin/students/${params.studentId}`} className="inline-block text-sm text-arc-muted hover:text-arc-ink">← Back to {student.full_name || "student"}</Link>
       <PageHeader title={detail.run.title} description={`${detail.run.answered}/${detail.run.total} answered · ${detail.run.reported_questions} reported issue${detail.run.reported_questions === 1 ? "" : "s"}`} />
-      <p className="mt-2 text-sm text-arc-muted">Reported items are credited as correct in the adjusted score.</p>
+      <p className="mt-2 text-sm text-arc-muted">Scores are module-aware Digital SAT estimates. Reported items are credited as correct in the adjusted score; official scores may vary by test form and question difficulty.</p>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <section className="arc-card p-5"><p className="arc-card-label">Original score</p><p className="mt-2 font-sans text-4xl font-semibold text-arc-ink">{detail.raw.total}</p><p className="mt-1 text-sm text-arc-muted">Range {detail.raw.total_lower}–{detail.raw.total_upper} · R&W {detail.raw.reading_writing} correct · Math {detail.raw.math} correct</p></section>
-        <section className="rounded-2xl border-2 border-arc-accent bg-arc-accentSoft p-5"><p className="arc-card-label text-arc-accentDeep">Adjusted score</p><p className="mt-2 font-sans text-4xl font-semibold text-arc-ink">{detail.adjusted.total}</p><p className="mt-1 text-sm text-arc-muted">Range {detail.adjusted.total_lower}–{detail.adjusted.total_upper} · R&W {detail.adjusted.reading_writing} correct · Math {detail.adjusted.math} correct</p></section>
+        <section className="arc-card p-5"><p className="arc-card-label">Original estimated score</p><p className="mt-2 font-sans text-4xl font-semibold text-arc-ink">{detail.raw.total}</p><p className="mt-1 text-sm text-arc-muted">R&W {detail.raw.reading_writing_score} ({detail.raw.reading_writing}/54 correct) · Math {detail.raw.math_score} ({detail.raw.math}/44 correct)</p></section>
+        <section className="rounded-2xl border-2 border-arc-accent bg-arc-accentSoft p-5"><p className="arc-card-label text-arc-accentDeep">Adjusted estimated score</p><p className="mt-2 font-sans text-4xl font-semibold text-arc-ink">{detail.adjusted.total}</p><p className="mt-1 text-sm text-arc-muted">R&W {detail.adjusted.reading_writing_score} ({detail.adjusted.reading_writing}/54 correct) · Math {detail.adjusted.math_score} ({detail.adjusted.math}/44 correct)</p></section>
       </div>
       <section className="mt-8 space-y-3">
         <h2 className="font-sans text-base font-semibold text-arc-ink">Question review</h2>

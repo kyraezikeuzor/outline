@@ -35,11 +35,11 @@ export default async function JoinBootcampPage({
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Image
-              src="/neoprep-logo.png"
+              src="/tutormigo-mark-blue.png"
               alt="Tutormigo"
               width={36}
               height={36}
-              className="h-9 w-9 rounded-lg object-cover"
+              className="h-9 w-9 object-contain"
               priority
             />
             <span className="text-2xl font-semibold tracking-tight text-[#18181B]">

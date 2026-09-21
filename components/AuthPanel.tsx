@@ -15,6 +15,7 @@ const COPY: Record<
   AuthMode,
   {
     title: string;
+    subtitle: string;
     action: string;
     switchPrompt: string;
     switchLabel: string;
@@ -23,6 +24,7 @@ const COPY: Record<
 > = {
   login: {
     title: "Sign in",
+    subtitle: "Good to see you again.",
     action: "Continue with email",
     switchPrompt: "New to Tutormigo?",
     switchLabel: "Create an account",
@@ -30,10 +32,41 @@ const COPY: Record<
   },
   signup: {
     title: "Create your free account",
+    subtitle: "Free to start, no card required.",
     action: "Continue with email",
     switchPrompt: "Already have an account?",
     switchLabel: "Sign in",
     switchHref: "/login",
+  },
+};
+
+/**
+ * Brand-panel copy. Mode-aware because this component also backs /signup,
+ * where a "welcome back" message would be wrong.
+ */
+const PANEL_COPY: Record<
+  AuthMode,
+  { eyebrow: string; headline: string; body: string; benefits: string[] }
+> = {
+  login: {
+    eyebrow: "Welcome back",
+    headline: "Pick up right where you left off.",
+    body: "Your practice, progress, and study plan stay together every time you sign in.",
+    benefits: [
+      "Continue your personalized SAT roadmap",
+      "Keep your practice history and progress",
+      "Focus on the skills that need attention",
+    ],
+  },
+  signup: {
+    eyebrow: "Start here",
+    headline: "Your SAT plan, built around you.",
+    body: "Create an account and your roadmap, practice history, and progress follow you everywhere.",
+    benefits: [
+      "Get a personalized SAT roadmap",
+      "Practice with 1,000+ original questions",
+      "Watch every skill improve over time",
+    ],
   },
 };
 
@@ -81,6 +114,40 @@ function MailIcon() {
     >
       <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 8l8 5.5L20 8" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3 w-3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      aria-hidden
+    >
+      <path d="m5 12 4 4L19 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FlameIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 3s4.5 3.6 4.5 8.2a4.5 4.5 0 01-9 0c0-1.3.5-2.4 1.2-3.3.3 1 1 1.7 1.8 1.9C10.2 7.4 12 5.6 12 3z"
+      />
     </svg>
   );
 }
@@ -247,9 +314,12 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   return (
     <div className="w-full">
       <h1 className={`text-center ${typography.pageTitle}`}>{copy.title}</h1>
+      <p className={`mt-2 text-center ${typography.pageDescription} text-[15px]`}>
+        {copy.subtitle}
+      </p>
 
       <div
-        className="mt-8 grid gap-3"
+        className="mt-7 grid gap-3"
         style={{
           gridTemplateColumns: `repeat(${OAUTH_PROVIDERS.length}, minmax(0, 1fr))`,
         }}
@@ -369,13 +439,96 @@ function AuthForm({ mode }: { mode: AuthMode }) {
   );
 }
 
+/**
+ * The sign-in brand panel: the existing sky/grid artwork with copy laid over
+ * it. The artwork stays the background rather than becoming a flat colour, so
+ * a white wash (strongest at the top, gone by the horizon) buys contrast for
+ * the charcoal text while leaving the grid plane visible underneath.
+ */
+function BrandPanel({ mode }: { mode: AuthMode }) {
+  const panel = PANEL_COPY[mode];
+
+  return (
+    <div className="relative aspect-[82/100] w-full max-w-[calc((100dvh-2rem)*0.82)] overflow-hidden rounded-[1.75rem]">
+      {/* The 1.42 source is wider than this portrait frame, so cover is
+          height-bound and the trim comes evenly off both sides; centring keeps
+          the vanishing point in the middle. */}
+      <Image
+        src="/backgrounds/dashboard-math-grid.webp"
+        alt=""
+        aria-hidden
+        fill
+        priority
+        className="object-cover object-center"
+        sizes="(min-width: 1024px) 50vw, 0px"
+      />
+      <div
+        className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.8)_0%,rgba(255,255,255,0.66)_30%,rgba(255,255,255,0.32)_54%,rgba(255,255,255,0.08)_74%,rgba(255,255,255,0)_100%)]"
+        aria-hidden
+      />
+
+      {/* A couple of product-true chips for personality — restrained, and kept
+          clear of the text column by its max-w. */}
+      <div className="absolute right-8 top-8 z-10 hidden items-center gap-2 rounded-xl border border-white/80 bg-white/85 px-3 py-2 backdrop-blur-sm xl:flex">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-arc-accentSoft text-arc-accentDeep">
+          <FlameIcon />
+        </span>
+        <span className="font-sans text-[13px] font-medium text-arc-heading">
+          5-day streak
+        </span>
+      </div>
+
+      <div className="absolute right-6 top-[44%] z-10 w-[11.5rem] rounded-2xl border border-white/80 bg-white/85 p-3.5 backdrop-blur-sm xl:right-8">
+        <p className="font-sans text-[11px] font-medium uppercase tracking-[0.08em] text-arc-muted">
+          Mastery
+        </p>
+        <p className="mt-1 font-sans text-[13px] font-medium text-arc-heading">
+          Linear equations
+        </p>
+        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-arc-line">
+          <div className="h-full w-[72%] rounded-full bg-arc-accent" />
+        </div>
+      </div>
+
+      <div className="relative z-10 flex h-full flex-col p-8 xl:p-11">
+        <div className="max-w-[20rem] xl:max-w-[23rem]">
+          <p className="font-sans text-xs font-medium uppercase tracking-[0.1em] text-arc-accentDeep">
+            {panel.eyebrow}
+          </p>
+          <h2
+            className={`mt-3 ${typography.marketingCardTitle} text-[1.75rem] leading-[1.15] xl:text-[2.125rem]`}
+          >
+            {panel.headline}
+          </h2>
+          <p className={`mt-4 ${typography.bodySmall} xl:text-base`}>
+            {panel.body}
+          </p>
+        </div>
+
+        <ul className="mt-auto space-y-3 rounded-2xl border border-white/80 bg-white/80 p-5 backdrop-blur-sm xl:p-6">
+          {panel.benefits.map((benefit) => (
+            <li key={benefit} className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-arc-accentSoft text-arc-accentDeep">
+                <CheckIcon />
+              </span>
+              <span className="font-sans text-sm leading-snug text-arc-heading xl:text-[15px]">
+                {benefit}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function AuthPanel({ mode }: { mode: AuthMode }) {
   return (
     <main className="relative min-h-[100dvh] bg-white p-3 sm:p-4">
       {/* Below lg the artwork is a full-bleed backdrop and the card floats on
           top of it; from lg it moves into its own column (the <aside>). */}
       <Image
-        src="/auth-study-journey.webp"
+        src="/backgrounds/dashboard-math-grid.webp"
         alt=""
         aria-hidden
         fill
@@ -385,19 +538,25 @@ export default function AuthPanel({ mode }: { mode: AuthMode }) {
       />
 
       {/* No items-center: the row stretches so the artwork fills full height. */}
-      <div className="relative z-10 grid min-h-[calc(100dvh-1.5rem)] gap-8 lg:min-h-[calc(100dvh-2rem)] lg:grid-cols-2 lg:gap-6">
-        <section className="flex items-center justify-center px-1 py-8 lg:px-2 lg:py-0">
+      {/* The left column is sized to the panel rather than to half the row.
+          The panel is height-derived, so in an even 2-column split it is often
+          narrower than its column, and that surplus reads as part of the white
+          area — which pushed the form off-centre against it. This template is
+          the same min() the panel caps itself with, so the panel's own width is
+          unchanged and the column simply stops hugging dead space. */}
+      <div className="relative z-10 grid min-h-[calc(100dvh-1.5rem)] gap-8 lg:min-h-[calc(100dvh-2rem)] lg:grid-cols-[min(calc((100dvh-2rem)*0.82),calc((100vw-56px)/2))_minmax(0,1fr)] lg:gap-6">
+        <section className="flex items-center justify-center px-1 py-8 lg:order-2 lg:px-2 lg:py-0">
           <div className="w-full max-w-[26rem] rounded-[1.75rem] bg-white p-6 shadow-[0_18px_50px_-12px_rgba(10,10,10,0.35)] sm:p-8 lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
             <Link
               href="/"
               className="mb-9 flex items-center justify-center gap-2.5"
             >
               <Image
-                src="/neoprep-logo.png"
+                src="/tutormigo-mark-blue.png"
                 alt="Tutormigo"
                 width={40}
                 height={40}
-                className="h-10 w-10 rounded-[0.8rem] object-cover"
+                className="h-10 w-10 object-contain"
                 priority
               />
               <span className="font-dm text-[28px] font-medium tracking-[-0.03em] text-[#0A0A0A]">
@@ -415,24 +574,14 @@ export default function AuthPanel({ mode }: { mode: AuthMode }) {
           </div>
         </section>
 
-        {/* Artwork is full-bleed 1086x1448 — width/height must match the file
-            so the reserved aspect box is right and the image never shifts on
-            load. Corners are rounded here, not baked into the file. */}
-        {/* justify-end: when the portrait image is height-bound the leftover
-            column width goes to the left, not split either side. */}
-        <aside className="hidden items-center justify-end lg:flex">
-          <Image
-            src="/auth-study-journey.webp"
-            alt="A calm lake between green hills under a bright, cloudy sky"
-            width={1086}
-            height={1448}
-            priority
-            /* Shown a touch shorter than the 0.75 source aspect; object-bottom
-               anchors the artwork so the trim comes off the top (empty sky)
-               only. max-w keeps the derived height inside the viewport. */
-            className="aspect-[82/100] w-full max-w-[calc((100dvh-2rem)*0.82)] rounded-[1.75rem] object-cover object-bottom"
-            sizes="(min-width: 1024px) 50vw, 0px"
-          />
+        {/* The panel sits in the left column, but stays after the form in the
+            DOM so the primary task is what a screen reader reaches first —
+            safe here because the panel holds nothing focusable.
+            justify-start: when the portrait frame is height-bound the leftover
+            column width goes to the right, not split either side. Hidden below
+            lg so small screens keep the form as the only thing on screen. */}
+        <aside className="hidden items-center justify-start lg:order-1 lg:flex">
+          <BrandPanel mode={mode} />
         </aside>
       </div>
     </main>

@@ -56,8 +56,10 @@ export const typography = {
   input: "font-sans text-sm font-normal text-arc-heading",
   // Public marketing pages only. Keeping these separate prevents a public-site
   // redesign from changing typography inside the student platform.
+  // The hero is the one serif moment on the public site: EB Garamond at a
+  // tight 0.96 leading. Everything else stays Inter.
   marketingHeroTitle:
-    "font-dm text-4xl font-medium leading-[1.04] tracking-normal text-arc-heading sm:text-6xl lg:text-[4rem]",
+    "font-garamond text-[2.75rem] font-medium leading-[0.96] tracking-[-0.015em] sm:text-6xl lg:text-[4.5rem]",
   marketingPageTitle:
     "font-dm text-4xl font-medium leading-[1.06] tracking-normal text-arc-heading sm:text-5xl lg:text-[3.5rem]",
   marketingSectionTitle:
